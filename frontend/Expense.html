@@ -1,57 +1,101 @@
 <!DOCTYPE html>
 <html>
-    <head>
-        <title></title>
-    </head>
-    <body>
 
-        <form>
-            <table>
-                <tr>
-                    <th><label for="date">Date</label></th>
-                    <th> <label for="mode of payment">mode of payment</label></th>
-                    <th>
-<label for="incomin">incomin</label>
-                    </th>
-                    <th>
-<label for="outgoing">outgoing</label>
-                    </th>
-                    <th>
-<label for="field">field</label>
-                    </th>
-                    <th>
-<label for="description">description</label>
-                    </th>
-                </tr>
-                <tr>
-                    <td> <input type="text" id="date">
-          </td>
-          <td>
- <input type="text" id="mode of payment">
-           
-          </td>
-          <td> <input type="text" id="incomin">
-           </td>
-           <td> <input type="text" id="outgoing">
-            </td>
-            <td><select name="field" id="field">
-                <option value="Food">Food</option>
-                <option value="Stationary">Stationary</option>
-                <option value="hisab kitaab">hisab kitaab</option>
-                <option value="Groww">Groww</option>
-            </select>
-            </td>
-            <td><input type="text" id="description">
-            </td>
-            <td><input type="submit" value="approved"></td>
-                </tr>
+<head>
+    <title></title>
+    <style>
+      #displ table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    border: 3px solid purple;
+    font-family: "Rock Salt", cursive;
+  }
+
+  #displ th, #displ td {
+    border: 1px solid purple;
+    padding: 8px;
+    text-align: center;
+  }
+    </style>
+</head>
+
+<body>
+
+    <form>
+        <table>
+            <tr>
+                <th><label for="date">Date</label></th>
+                <th> <label for="mode-of-payment">mode of payment</label></th>
+                <th>
+                    <label for="incomin">incomin</label>
+                </th>
+                <th>
+                    <label for="outgoing">outgoing</label>
+                </th>
+                <th>
+                    <label for="field">field</label>
+                </th>
+                <th>
+                    <label for="description">description</label>
+                </th>
+            </tr>
+            <tr>
+                <td> <input type="text" id="date">
+                </td>
+                <td>
+                    <input type="text" id="mode-of-payment">
+
+                </td>
+                <td> <input type="number" id="incomin">
+                </td>
+                <td> <input type="number" id="outgoing">
+                </td>
+                <td><select name="field" id="field">
+                        <option value="Food">Food</option>
+                        <option value="Stationary">Stationary</option>
+                        <option value="hisab kitaab">hisab kitaab</option>
+                        <option value="Groww">Groww</option>
+                    </select>
+                </td>
+                <td><input type="text" id="description">
+                </td>
+                <td><input type="submit" value="approved" id="approve"></td>
+            </tr>
+        </table>
+
+
+
+
+
+
+    </form>
+
+
+
+    <div id="displ">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th> mode of payment</th>
+                <th>
+                    incomin
+                </th>
+                <th>
+                    outgoing
+                </th>
+                <th>
+                    field
+                </th>
+                <th>
+                    description
+                </th>
+            </tr>
+            <tbody id="table-body"></tbody>
             </table>
-           
-              
-            
-            
-             
-             
-        </form>
-    </body>
+        
+    </div>
+    <script src="script.js"></script>
+</body>
+
 </html>
