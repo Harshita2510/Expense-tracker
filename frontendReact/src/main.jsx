@@ -1,7 +1,5 @@
-import { createRoot } from 'react-dom/client'
-import App from './ExpenseForm.jsx'
-createRoot(document.getElementById('root')).render(
- 
-    <App />
-  
-)
+import { createRoot } from 'react-dom/client';
+import React from 'react';
+import App from './App';
+
+createRoot(document.getElementById('root')).render(<App />);
