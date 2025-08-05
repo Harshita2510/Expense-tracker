@@ -8,41 +8,41 @@ let Hader = (props) => {
     const totals = JSON.parse(localStorage.getItem('monthlyTotals') || '{}');
     const last = current === 1 ? 12 : current - 1;
 
-    const spent =
+    // 1. Calculate the total spending for the CURRENT month
+    const spentThisMonth =
       props.keyss?.length > 0
-        ? props.keyss.reduce((sum, e) => sum + Number(e.Outgoing || 0), 0)
+        ? props.keyss
+            .filter(e => {
+              const transactionMonth = new Date(e.Datee).getMonth() + 1;
+              return transactionMonth === current;
+            })
+            .reduce((sum, e) => sum + Number(e.Outgoing || 0), 0)
         : 0;
 
-    // 🧠 Only "new" if monthlyTotals doesn't have current OR it's a new visit in current month
-    const isNewMonth = !(current in totals);
-    const limitAlreadySet =
-      localStorage.getItem(`limitSet-${current}`) === 'true';
-    // // 🔁 Set total for current month
-    // const updatedTotals = { ...totals, [current]: spent };
-    // localStorage.setItem('monthlyTotals', JSON.stringify(updatedTotals));
-    if (isNewMonth && !limitAlreadySet) {
-      const overspent = Math.max(0, (totals[last] || 0) - 3000);
-      const newLimit = 3000 - overspent;
-      localStorage.setItem(`limitSet-${current}`, 'true');
-      localStorage.setItem(`${current}`, newLimit);
+    // 2. Determine the initial limit for the current month
+    let currentMonthBaseLimit;
+    const limitKey = `${current}-limit`;
+    const savedLimit = localStorage.getItem(limitKey);
 
-      // 🔁 Set total for current month
-
-      localStorage.setItem(
-        'monthlyTotals',
-        JSON.stringify({ ...totals, [current]: spent })
-      );
-      setlimit(newLimit);
+    if (savedLimit) {
+      currentMonthBaseLimit = Number(savedLimit);
     } else {
-      const savedLimit = Number(localStorage.getItem(`${current}`)) || 3000;
-      localStorage.setItem(
-        'monthlyTotals',
-        JSON.stringify({ ...totals, [current]: spent })
-      );
-      setlimit(savedLimit - spent);
+      const overspent = Math.max(0, (totals[last] || 0) - 3000);
+      currentMonthBaseLimit = 3000 - overspent;
+      localStorage.setItem(limitKey, currentMonthBaseLimit);
     }
-  }, [props.keyss]);
 
+    // 3. Calculate the final remaining limit
+    const remainingLimit = currentMonthBaseLimit - spentThisMonth;
+    setlimit(remainingLimit);
+
+    // 4. Update the total spending for the current month in localStorage
+    localStorage.setItem(
+      'monthlyTotals',
+      JSON.stringify({ ...totals, [current]: spentThisMonth })
+    );
+
+  }, [props.keyss]);
   return (
     <>
       <h1>Limit:{limit}</h1>
