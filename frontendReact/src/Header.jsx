@@ -45,7 +45,34 @@ let Hader = (props) => {
   }, [props.keyss]);
   return (
     <>
-      <h1>Limit:{limit}</h1>
+      <h1 
+      style={{
+          color:'#696773',
+          textAlign:'center',
+          fontSize:'25px',
+          padding:'0px'
+      }}
+      >Current Limit: ${limit}</h1>
+      <article
+  style={{
+    paddingTop:'25px',
+    padding: '16px',
+    borderRadius: '12px',
+    backgroundColor: '#fff7ed', // light orange/yellow
+    border: '1px solid #fed7aa',
+  }}
+>
+  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>Monthly Total</h4>
+  <p style={{ margin: '4px 0', fontSize: '20px', fontWeight: '700', color: '#d97706' }}>
+   ${(() => {
+    const current = new Date().getMonth() + 1;
+    const totals = JSON.parse(localStorage.getItem('monthlyTotals') || '{}');
+    return (totals[current] || 0).toFixed(2);
+  })()}
+  </p>
+  <small style={{ fontSize: '13px', color: '#6b7280' }}>Total for this month</small>
+</article>
+
     </>
   );
 };

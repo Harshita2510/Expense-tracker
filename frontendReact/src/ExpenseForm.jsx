@@ -21,7 +21,7 @@ function ExpenseForm() {
     localStorage.setItem('chabi', JSON.stringify(arr));
   }, [arr]);
 
-  const Approv = (e) => {
+  const Approv = async (e) => {
     e.preventDefault();
     let entries = {
       Datee:
@@ -32,6 +32,12 @@ function ExpenseForm() {
       Expense: field,
       Description: description,
     };
+
+  //   await fetch('http://localhost:3000/exp', {
+  //   method: 'POST',
+  //   headers: { 'Content-Type': 'application/json' },
+  //   body: JSON.stringify(entries)
+  // });
 
     setArr([...arr, entries]);
 
@@ -47,115 +53,120 @@ function ExpenseForm() {
 
   return (
     <>
-      < Hader keyss={arr}  />
-      <form onSubmit={(e) => Approv(e)}>
-        <table
-          style={{
-            width: '100%',
-            borderCollapse: 'collapse',
-            marginBottom: '20px',
-          }}
-        >
-          <thead>
-            <tr>
-              {[
-                'Date',
-                'Mode of Payment',
-                'Incoming',
-                'Outgoing',
-                'Field',
-                'Description',
-                'Action',
-              ].map((item, i) => (
-                <th
-                  key={i}
-                  style={{
-                    border: '1px solid #ccc',
-                    padding: '8px',
-                    backgroundColor: '#f5f5f5',
-                    textAlign: 'left',
-                  }}
-                >
-                  {item}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="text"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="text"
-                  value={ModeOfPay}
-                  onChange={(e) => setModeOfPay(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="number"
-                  value={income}
-                  onChange={(e) => setIncome(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="number"
-                  value={outgo}
-                  onChange={(e) => setOutgo(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <select
-                  value={field}
-                  onChange={(e) => setField(e.target.value)}
-                  style={{ width: '100%' }}
-                >
-                  <option value="Food">Food</option>
-                  <option value="Stationary">Stationary</option>
-                  <option value="hisab kitaab">hisab kitaab</option>
-                  <option value="Groww">Groww</option>
-                </select>
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  style={{ width: '100%' }}
-                />
-              </td>
-              <td style={{ border: '1px solid #ccc', padding: '8px' }}>
-                <input
-                  type="submit"
-                  value="Approved"
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                  }}
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </form>
+    < Hader keyss={arr}  />
+
+      <Dashboard ke={arr} />
+<form onSubmit={(e) => Approv(e)}>
+  <div
+    style={{
+      display: 'grid',
+      gridTemplateColumns: 'repeat(3, 1fr)', // 3 equal columns
+      gap: '20px',
+      marginBottom: '20px',
+      padding: '20px',
+      border: '1px solid #e5e7eb',
+      borderRadius: '8px',
+      backgroundColor: '#fafafa',
+      width: '100%',          // covers full width
+      boxSizing: 'border-box',
+    }}
+  >
+    {/* Date */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Date *</label>
+      <input
+        type="text"
+        value={date}
+        onChange={(e) => setDate(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      />
+    </div>
+
+    {/* Mode of Payment */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Mode of Payment</label>
+      <input
+        type="text"
+        value={ModeOfPay}
+        onChange={(e) => setModeOfPay(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      />
+    </div>
+
+    {/* Field */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Field *</label>
+      <select
+        value={field}
+        onChange={(e) => setField(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      >
+        <option value="Food">Food</option>
+        <option value="Stationary">Stationary</option>
+        <option value="hisab kitaab">hisab kitaab</option>
+        <option value="Groww">Groww</option>
+      </select>
+    </div>
+
+    {/* Incoming */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Incoming Amount</label>
+      <input
+        type="number"
+        value={income}
+        onChange={(e) => setIncome(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      />
+    </div>
+
+    {/* Outgoing */}
+    <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Outgoing Amount</label>
+      <input
+        type="number"
+        value={outgo}
+        onChange={(e) => setOutgo(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      />
+    </div>
+
+    {/* Empty spacer for alignment */}
+    <div></div>
+
+    {/* Description (spans full width) */}
+    <div style={{ gridColumn: 'span 3', display: 'flex', flexDirection: 'column' }}>
+      <label style={{ fontWeight: '500', marginBottom: '6px' }}>Description</label>
+      <input
+        type="text"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        style={{ padding: '10px', border: '1px solid #ccc', borderRadius: '6px', width: '100%' }}
+      />
+    </div>
+
+    {/* Submit Button (spans full width) */}
+    <div style={{ gridColumn: 'span 3' }}>
+      <input
+        type="submit"
+        value="Approved"
+        style={{
+          width: '100%',
+          padding: '14px',
+          background: '#4CAF50',
+          color: '#fff',
+          fontWeight: '600',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+        }}
+      />
+    </div>
+  </div>
+</form>
+
     
       <ExpenseItem k={arr} />
-      <Dashboard ke={arr} />
+    
      
     </>
   );
