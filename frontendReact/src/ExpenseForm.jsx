@@ -36,9 +36,9 @@ function ExpenseForm() {
     const loadData = async () => {
       try {
         const [expensesResponse, refundsResponse] = await Promise.all([
-  fetch(`${API_URL}/api/expenses`),
-  fetch(`${API_URL}/api/refunds`)
-]);
+          fetch('/api/expenses'),
+          fetch('/api/refunds'),
+        ]);
 
         if (!expensesResponse.ok || !refundsResponse.ok) {
           throw new Error('Could not load data');
