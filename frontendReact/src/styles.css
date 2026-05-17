@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  background: #fff8d6;
+  background: #101014;
 }
 
 button,
@@ -17,12 +17,11 @@ select {
   min-height: 100vh;
   padding: 32px;
   background:
-    radial-gradient(circle at 12% 14%, rgba(255, 214, 102, 0.65), transparent 24%),
-    radial-gradient(circle at 88% 10%, rgba(124, 255, 203, 0.62), transparent 26%),
-    radial-gradient(circle at 18% 86%, rgba(142, 197, 255, 0.58), transparent 28%),
-    radial-gradient(circle at 86% 84%, rgba(255, 143, 171, 0.42), transparent 26%),
-    linear-gradient(180deg, #fff8d6 0%, #eafff7 48%, #fff1f5 100%);
-  background-attachment: fixed;
+    linear-gradient(135deg, rgba(255, 230, 109, 0.18) 0 25%, transparent 25% 50%, rgba(6, 214, 160, 0.18) 50% 75%, transparent 75%),
+    radial-gradient(circle at 12% 12%, rgba(255, 92, 138, 0.22), transparent 26%),
+    radial-gradient(circle at 86% 18%, rgba(69, 123, 255, 0.2), transparent 30%),
+    #17151f;
+  background-size: 34px 34px, auto, auto, auto;
   color: #1c1b21;
   font-family: "Trebuchet MS", Arial, sans-serif;
 }
@@ -30,7 +29,7 @@ select {
 .app-title {
   margin: 0 auto 22px;
   padding: 0;
-  color: #17151f;
+  color: #ffe66d;
   font-size: 64px;
   line-height: 1;
   text-align: center;
@@ -47,7 +46,7 @@ select {
 .limit-title {
   margin: 0 0 16px;
   padding: 0;
-  color: #17151f;
+  color: #fff8dd;
   font-size: 25px;
   text-align: center;
   text-shadow: 2px 2px 0 #ff5c8a;
