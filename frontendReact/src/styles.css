@@ -52,6 +52,39 @@ select {
   text-shadow: 2px 2px 0 #ff5c8a;
 }
 
+.limit-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 18px;
+  border: 3px solid #17151f;
+  border-radius: 8px;
+  background-color: #fff8dd;
+  box-shadow: 8px 8px 0 #17151f;
+}
+
+.limit-save-button {
+  min-height: 47px;
+  padding: 12px 18px;
+  border: 3px solid #17151f;
+  border-radius: 6px;
+  background-color: #06d6a0;
+  color: #17151f;
+  cursor: pointer;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 5px 5px 0 #17151f;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+
+.limit-save-button:hover {
+  box-shadow: 8px 8px 0 #17151f;
+  transform: translate(-3px, -3px);
+}
+
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -110,6 +143,10 @@ select {
   background-color: #8ec5ff;
 }
 
+.stat-card--travel {
+  background-color: #c9a7ff;
+}
+
 .amount-income,
 .amount-net {
   color: #073b33;
@@ -121,6 +158,10 @@ select {
 
 .amount-monthly {
   color: #10254f;
+}
+
+.amount-travel {
+  color: #2b145c;
 }
 
 .menu-bar {
@@ -354,6 +395,10 @@ select {
   }
 
   .menu-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .limit-form {
     grid-template-columns: 1fr;
   }
 
