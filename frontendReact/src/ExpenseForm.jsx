@@ -36,8 +36,8 @@ function ExpenseForm() {
     const loadData = async () => {
       try {
         const [expensesResponse, refundsResponse] = await Promise.all([
-          fetch('/api/expenses'),
-          fetch('/api/refunds'),
+          fetch('https://expense-tracker-e9gg.onrender.com'),
+         // fetch('/api/refunds'),
         ]);
 
         if (!expensesResponse.ok || !refundsResponse.ok) {
