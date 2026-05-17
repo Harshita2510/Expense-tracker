@@ -5,9 +5,11 @@ import Hader from './Header';
 
 function ExpenseForm() {
   var [arr, setArr] = useState([]);
+  const [refunds, setRefunds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
   const [activePage, setActivePage] = useState('form');
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const dte = new Date();
 
@@ -24,26 +26,36 @@ function ExpenseForm() {
   const [entryTypeFilter, setEntryTypeFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
   const [fieldFilter, setFieldFilter] = useState('all');
+  const [refundDate, setRefundDate] = useState(dte.toISOString().slice(0, 10));
+  const [refundAmount, setRefundAmount] = useState('');
+  const [refundMode, setRefundMode] = useState('UPI');
+  const [customRefundMode, setCustomRefundMode] = useState('');
+  const [refundDescription, setRefundDescription] = useState('');
 
   useEffect(() => {
-    const loadExpenses = async () => {
+    const loadData = async () => {
       try {
-        const response = await fetch('/api/expenses');
+        const [expensesResponse, refundsResponse] = await Promise.all([
+          fetch('/api/expenses'),
+          fetch('/api/refunds'),
+        ]);
 
-        if (!response.ok) {
-          throw new Error('Could not load expenses');
+        if (!expensesResponse.ok || !refundsResponse.ok) {
+          throw new Error('Could not load data');
         }
 
-        const expenses = await response.json();
+        const expenses = await expensesResponse.json();
+        const refundEntries = await refundsResponse.json();
         setArr(expenses);
+        setRefunds(refundEntries);
       } catch {
-        setError('Could not connect to the expense database.');
+        setError('Could not connect to the database.');
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadExpenses();
+    loadData();
   }, []);
 
   const Approv = async (e) => {
@@ -105,6 +117,7 @@ function ExpenseForm() {
     { id: 'form', label: 'Add Entry' },
     { id: 'entries', label: 'Past Entries' },
     { id: 'summary', label: 'Summary' },
+    { id: 'refunds', label: 'Refunds' },
   ];
 
   const paymentModes = [
@@ -114,6 +127,7 @@ function ExpenseForm() {
     'Credit Card',
     'Bank Transfer',
     ...arr.map((entry) => entry.ModeOfPayment).filter(Boolean),
+    ...refunds.map((refund) => refund.ModeOfPayment).filter(Boolean),
   ].filter((mode, index, modes) => modes.indexOf(mode) === index);
 
   const fieldOptions = arr
@@ -134,15 +148,108 @@ function ExpenseForm() {
     return matchesEntryType && matchesPayment && matchesField;
   });
 
+  const pendingRefunds = refunds.filter((refund) => refund.Status !== 'done');
+  const completedRefunds = refunds.filter((refund) => refund.Status === 'done');
+  const pendingRefundTotal = pendingRefunds.reduce(
+    (sum, refund) => sum + Number(refund.Amount || 0),
+    0
+  );
+
+  const addRefund = async (e) => {
+    e.preventDefault();
+    const paymentMode = refundMode === 'Other' ? customRefundMode.trim() : refundMode;
+
+    if (!paymentMode) {
+      setError('Please enter a refund payment mode.');
+      return;
+    }
+
+    if (!Number(refundAmount || 0)) {
+      setError('Please enter a refund amount.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/refunds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          Datee: refundDate,
+          ModeOfPayment: paymentMode,
+          Amount: Number(refundAmount || 0),
+          Description: refundDescription,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not save refund');
+      }
+
+      const savedRefund = await response.json();
+      setRefunds([savedRefund, ...refunds]);
+      setRefundDate(dte.toISOString().slice(0, 10));
+      setRefundAmount('');
+      setRefundMode('UPI');
+      setCustomRefundMode('');
+      setRefundDescription('');
+      setError('');
+    } catch {
+      setError('Could not save this refund.');
+    }
+  };
+
+  const markRefundDone = async (refundId) => {
+    try {
+      const response = await fetch(`/api/refunds/${refundId}/done`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ CompletedDate: dte.toISOString().slice(0, 10) }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not complete refund');
+      }
+
+      const data = await response.json();
+      setRefunds(refunds.map((refund) => (
+        refund._id === data.refund._id ? data.refund : refund
+      )));
+
+      if (data.expense && !arr.some((entry) => entry._id === data.expense._id)) {
+        setArr([data.expense, ...arr]);
+      }
+
+      setError('');
+    } catch {
+      setError('Could not mark this refund as done.');
+    }
+  };
+
   return (
     <>
-      <nav className="menu-bar" aria-label="Main sections">
+      <button
+        className="menu-toggle"
+        type="button"
+        aria-expanded={isMenuOpen}
+        aria-controls="main-menu"
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+      >
+        Menu: {menuItems.find((item) => item.id === activePage)?.label}
+      </button>
+      <nav
+        id="main-menu"
+        className={`menu-bar ${isMenuOpen ? 'menu-bar--open' : ''}`}
+        aria-label="Main sections"
+      >
         {menuItems.map((item) => (
           <button
             key={item.id}
             className={`menu-button ${activePage === item.id ? 'menu-button--active' : ''}`}
             type="button"
-            onClick={() => setActivePage(item.id)}
+            onClick={() => {
+              setActivePage(item.id);
+              setIsMenuOpen(false);
+            }}
           >
             {item.label}
           </button>
@@ -304,6 +411,123 @@ function ExpenseForm() {
           </p>
 
           <ExpenseItem k={filteredEntries} />
+        </>
+      )}
+
+      {activePage === 'refunds' && (
+        <>
+          <section className="refund-summary">
+            <article className="stat-card stat-card--travel">
+              <h4>Pending Refunds</h4>
+              <p className="amount-travel">${pendingRefundTotal.toFixed(2)}</p>
+              <small>{pendingRefunds.length} waiting to be received</small>
+            </article>
+          </section>
+
+          <form className="expense-form" onSubmit={addRefund}>
+            <div className="form-grid">
+              <div className="form-field">
+                <label>Refund Date *</label>
+                <input
+                  type="date"
+                  value={refundDate}
+                  onChange={(e) => setRefundDate(e.target.value)}
+                />
+              </div>
+
+              <div className="form-field">
+                <label>Payment Mode *</label>
+                <select
+                  value={refundMode}
+                  onChange={(e) => setRefundMode(e.target.value)}
+                >
+                  {paymentModes.map((mode) => (
+                    <option key={mode} value={mode}>{mode}</option>
+                  ))}
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+
+              {refundMode === 'Other' && (
+                <div className="form-field">
+                  <label>Custom Payment Mode *</label>
+                  <input
+                    type="text"
+                    value={customRefundMode}
+                    onChange={(e) => setCustomRefundMode(e.target.value)}
+                    placeholder="e.g. Razorpay, Paytm"
+                  />
+                </div>
+              )}
+
+              <div className="form-field">
+                <label>Refund Amount *</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={refundAmount}
+                  onChange={(e) => setRefundAmount(e.target.value)}
+                />
+              </div>
+
+              <div className="form-field form-field--wide">
+                <label>Description</label>
+                <input
+                  type="text"
+                  value={refundDescription}
+                  onChange={(e) => setRefundDescription(e.target.value)}
+                  placeholder="e.g. Cancelled order, failed payment"
+                />
+              </div>
+
+              <div className="form-actions">
+                <input
+                  className="submit-button"
+                  type="submit"
+                  value="Track Refund"
+                />
+              </div>
+            </div>
+          </form>
+
+          <section className="refund-list" aria-label="Pending refunds">
+            <h2>Pending Refunds</h2>
+            {pendingRefunds.length === 0 ? (
+              <p className="filter-count">No pending refunds</p>
+            ) : pendingRefunds.map((refund) => (
+              <article className="refund-card" key={refund._id}>
+                <div>
+                  <h3>${Number(refund.Amount || 0).toFixed(2)}</h3>
+                  <p>{refund.Description || 'Refund pending'}</p>
+                  <small>{refund.Datee} | {refund.ModeOfPayment}</small>
+                </div>
+                <button
+                  className="limit-save-button"
+                  type="button"
+                  onClick={() => markRefundDone(refund._id)}
+                >
+                  Mark Done
+                </button>
+              </article>
+            ))}
+          </section>
+
+          <section className="refund-list" aria-label="Completed refunds">
+            <h2>Completed Refunds</h2>
+            {completedRefunds.length === 0 ? (
+              <p className="filter-count">No completed refunds yet</p>
+            ) : completedRefunds.map((refund) => (
+              <article className="refund-card refund-card--done" key={refund._id}>
+                <div>
+                  <h3>${Number(refund.Amount || 0).toFixed(2)}</h3>
+                  <p>{refund.Description || 'Refund received'}</p>
+                  <small>
+                    Received {refund.CompletedDate || refund.Datee} | {refund.ModeOfPayment}
+                  </small>
+                </div>
+              </article>
+            ))}
+          </section>
         </>
       )}
 

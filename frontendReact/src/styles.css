@@ -4,7 +4,7 @@
 
 body {
   margin: 0;
-  background: #101014;
+  background: #fff8d6;
 }
 
 button,
@@ -17,11 +17,12 @@ select {
   min-height: 100vh;
   padding: 32px;
   background:
-    linear-gradient(135deg, rgba(255, 230, 109, 0.18) 0 25%, transparent 25% 50%, rgba(6, 214, 160, 0.18) 50% 75%, transparent 75%),
-    radial-gradient(circle at 12% 12%, rgba(255, 92, 138, 0.22), transparent 26%),
-    radial-gradient(circle at 86% 18%, rgba(69, 123, 255, 0.2), transparent 30%),
-    #17151f;
-  background-size: 34px 34px, auto, auto, auto;
+    radial-gradient(circle at 12% 14%, rgba(255, 214, 102, 0.65), transparent 24%),
+    radial-gradient(circle at 88% 10%, rgba(124, 255, 203, 0.62), transparent 26%),
+    radial-gradient(circle at 18% 86%, rgba(142, 197, 255, 0.58), transparent 28%),
+    radial-gradient(circle at 86% 84%, rgba(255, 143, 171, 0.42), transparent 26%),
+    linear-gradient(180deg, #fff8d6 0%, #eafff7 48%, #fff1f5 100%);
+  background-attachment: fixed;
   color: #1c1b21;
   font-family: "Trebuchet MS", Arial, sans-serif;
 }
@@ -29,7 +30,7 @@ select {
 .app-title {
   margin: 0 auto 22px;
   padding: 0;
-  color: #ffe66d;
+  color: #17151f;
   font-size: 64px;
   line-height: 1;
   text-align: center;
@@ -46,7 +47,7 @@ select {
 .limit-title {
   margin: 0 0 16px;
   padding: 0;
-  color: #fff8dd;
+  color: #17151f;
   font-size: 25px;
   text-align: center;
   text-shadow: 2px 2px 0 #ff5c8a;
@@ -147,6 +148,14 @@ select {
   background-color: #c9a7ff;
 }
 
+.stat-card--cash {
+  background-color: #9aff6f;
+}
+
+.stat-card--account {
+  background-color: #ffb86b;
+}
+
 .amount-income,
 .amount-net {
   color: #073b33;
@@ -164,9 +173,17 @@ select {
   color: #2b145c;
 }
 
+.amount-cash {
+  color: #1e4d10;
+}
+
+.amount-account {
+  color: #693600;
+}
+
 .menu-bar {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
   margin: 0 0 20px;
@@ -175,6 +192,22 @@ select {
   border-radius: 8px;
   background-color: #fff8dd;
   box-shadow: 8px 8px 0 #17151f;
+}
+
+.menu-toggle {
+  display: none;
+  width: 100%;
+  margin: 0 0 12px;
+  padding: 13px 14px;
+  border: 3px solid #17151f;
+  border-radius: 8px;
+  background-color: #ffe66d;
+  color: #17151f;
+  cursor: pointer;
+  font-weight: 900;
+  text-align: left;
+  text-transform: uppercase;
+  box-shadow: 6px 6px 0 #17151f;
 }
 
 .menu-button {
@@ -325,6 +358,66 @@ select {
   box-shadow: 5px 5px 0 #17151f;
 }
 
+.refund-summary {
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+.refund-list {
+  width: 100%;
+  margin-top: 24px;
+}
+
+.refund-list h2 {
+  width: fit-content;
+  margin: 0 0 14px;
+  padding: 8px 12px;
+  border: 3px solid #17151f;
+  border-radius: 8px;
+  background-color: #ffe66d;
+  color: #17151f;
+  font-size: 20px;
+  font-weight: 900;
+  text-transform: uppercase;
+  box-shadow: 5px 5px 0 #17151f;
+}
+
+.refund-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 3px solid #17151f;
+  border-radius: 8px;
+  background-color: #fff8dd;
+  box-shadow: 7px 7px 0 #17151f;
+}
+
+.refund-card--done {
+  background-color: #dffdf2;
+}
+
+.refund-card h3 {
+  margin: 0;
+  color: #2b145c;
+  font-size: 24px;
+  font-weight: 900;
+}
+
+.refund-card p {
+  margin: 4px 0;
+  color: #17151f;
+  font-weight: 800;
+}
+
+.refund-card small {
+  color: rgba(23, 21, 31, 0.72);
+  font-weight: 800;
+}
+
 .table-wrap {
   width: 100%;
   overflow-x: auto;
@@ -398,7 +491,24 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .menu-toggle {
+    display: block;
+  }
+
+  .menu-bar {
+    display: none;
+    margin-bottom: 18px;
+  }
+
+  .menu-bar--open {
+    display: grid;
+  }
+
   .limit-form {
+    grid-template-columns: 1fr;
+  }
+
+  .refund-card {
     grid-template-columns: 1fr;
   }
 
