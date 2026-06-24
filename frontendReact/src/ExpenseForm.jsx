@@ -18,8 +18,8 @@ function ExpenseForm() {
   );
   const [ModeOfPay, setModeOfPay] = useState('Cash');
   const [customModeOfPay, setCustomModeOfPay] = useState('');
-  const [income, setIncome] = useState('');
-  const [outgo, setOutgo] = useState('');
+  const [entryType, setEntryType] = useState('expense');
+  const [amount, setAmount] = useState('');
   const [field, setField] = useState('Food');
   const [customField, setCustomField] = useState('');
   const [description, setDescription] = useState('');
@@ -76,8 +76,8 @@ function ExpenseForm() {
     let entries = {
       Datee: date,
       ModeOfPayment: paymentMode,
-      Incoming: Number(income || 0),
-      Outgoing: Number(outgo || 0),
+      Incoming: entryType === 'income' ? Number(amount || 0) : 0,
+      Outgoing: entryType === 'expense' ? Number(amount || 0) : 0,
       Expense: expenseField,
       Description: description,
     };
@@ -106,19 +106,26 @@ function ExpenseForm() {
     );
     setModeOfPay('Cash');
     setCustomModeOfPay('');
-    setIncome('');
-    setOutgo('');
+    setEntryType('expense');
+    setAmount('');
     setField('Food');
     setCustomField('');
     setDescription('');
   };
 
   const menuItems = [
-    { id: 'form', label: 'Add Entry' },
-    { id: 'entries', label: 'Past Entries' },
-    { id: 'summary', label: 'Summary' },
-    { id: 'refunds', label: 'Refunds' },
+    { id: 'form', label: 'Add Entry', icon: '□' },
+    { id: 'entries', label: 'Past Entries', icon: '☷' },
+    { id: 'summary', label: 'Summary', icon: '◷' },
+    { id: 'refunds', label: 'Refunds', icon: '↻' },
   ];
+
+  const pageCopy = {
+    form: ['Dear Diary,', 'Log a new financial entry for today.'],
+    entries: ['Past Entries', 'Look back at where your money has been.'],
+    summary: ['Your Summary', 'A clear view of your financial story.'],
+    refunds: ['Refunds', 'Keep track of money making its way back to you.'],
+  };
 
   const paymentModes = [
     'Cash',
@@ -226,7 +233,12 @@ function ExpenseForm() {
   };
 
   return (
-    <>
+    <div className="diary-layout">
+      <aside className="sidebar">
+        <div className="brand-block">
+          <h1 className="app-title">Budget Diary</h1>
+          <p>Your personal financial companion</p>
+        </div>
       <button
         className="menu-toggle"
         type="button"
@@ -234,7 +246,8 @@ function ExpenseForm() {
         aria-controls="main-menu"
         onClick={() => setIsMenuOpen(!isMenuOpen)}
       >
-        Menu: {menuItems.find((item) => item.id === activePage)?.label}
+        <span>Menu</span>
+        <strong>{menuItems.find((item) => item.id === activePage)?.label}</strong>
       </button>
       <nav
         id="main-menu"
@@ -251,10 +264,17 @@ function ExpenseForm() {
               setIsMenuOpen(false);
             }}
           >
-            {item.label}
+            <span className="menu-icon" aria-hidden="true">{item.icon}</span>
+            <span>{item.label}</span>
           </button>
         ))}
       </nav>
+      </aside>
+      <main className="page-content">
+      <header className="page-header">
+        <h2>{pageCopy[activePage][0]}</h2>
+        <p>{pageCopy[activePage][1]}</p>
+      </header>
       {isLoading && (
         <p className="status-message">Loading expenses...</p>
       )}
@@ -264,6 +284,42 @@ function ExpenseForm() {
       {activePage === 'form' && (
         <form className="expense-form" onSubmit={(e) => Approv(e)}>
           <div className="form-grid">
+            <div className="entry-type-picker form-field--wide">
+              <label className={`type-option ${entryType === 'expense' ? 'type-option--active' : ''}`}>
+                <input
+                  type="radio"
+                  name="entryType"
+                  value="expense"
+                  checked={entryType === 'expense'}
+                  onChange={(e) => setEntryType(e.target.value)}
+                />
+                <span>Expense</span>
+              </label>
+              <label className={`type-option ${entryType === 'income' ? 'type-option--active' : ''}`}>
+                <input
+                  type="radio"
+                  name="entryType"
+                  value="income"
+                  checked={entryType === 'income'}
+                  onChange={(e) => setEntryType(e.target.value)}
+                />
+                <span>Income</span>
+              </label>
+            </div>
+
+            <div className="form-field">
+              <label>Amount (₹) *</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                required
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="0"
+              />
+            </div>
+
             <div className="form-field">
               <label>Date *</label>
               <input
@@ -324,28 +380,8 @@ function ExpenseForm() {
               </div>
             )}
 
-            <div className="form-field">
-              <label>Incoming Amount</label>
-              <input
-                type="number"
-                value={income}
-                onChange={(e) => setIncome(e.target.value)}
-              />
-            </div>
-
-            <div className="form-field">
-              <label>Outgoing Amount</label>
-              <input
-                type="number"
-                value={outgo}
-                onChange={(e) => setOutgo(e.target.value)}
-              />
-            </div>
-
-            <div></div>
-
             <div className="form-field form-field--wide">
-              <label>Description</label>
+              <label>Description / Note</label>
               <input
                 type="text"
                 value={description}
@@ -357,7 +393,7 @@ function ExpenseForm() {
               <input
                 className="submit-button"
                 type="submit"
-                value="Approved"
+                value={`Save ${entryType === 'expense' ? 'Expense' : 'Income'}`}
               />
             </div>
           </div>
@@ -537,7 +573,8 @@ function ExpenseForm() {
           <Dashboard ke={arr} />
         </>
       )}
-    </>
+      </main>
+    </div>
   );
 }
 
