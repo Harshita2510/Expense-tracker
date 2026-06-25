@@ -29,6 +29,7 @@ The JSON object must contain exactly these fields:
 
 Rules:
 - The user may speak in English, Hinglish, Hindi, Marathi, Gujarati, Tamil, Telugu, Bengali, Kannada, Malayalam, Punjabi, or any other Indian language.
+- If the input begins with "Voice transcript alternatives:", treat the pipe-separated options as possible speech recognizer outputs for the same user utterance. Pick the option that makes the most financial sense and contains the clearest amount.
 - Detect the user's language/style and put it in "language".
 - Store every transaction's category and description in clean English only, regardless of the user's spoken language.
 - The "roast" must be one short funny sarcastic sentence in the same language/style the user used. If they used Hinglish, reply in Hinglish. If they used Hindi, reply in Hindi. If they used English, reply in English.

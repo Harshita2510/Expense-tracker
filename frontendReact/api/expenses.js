@@ -25,6 +25,25 @@ export default async function handler(req, res) {
       return res.status(201).json(expense);
     }
 
+    if (req.method === 'DELETE') {
+      const expenseId = req.query.id || req.body?.id;
+
+      if (!expenseId) {
+        return res.status(400).json({ message: 'Entry id is required.' });
+      }
+
+      const deletedExpense = await Expense.findOneAndDelete({
+        _id: expenseId,
+        user: req.userId,
+      });
+
+      if (!deletedExpense) {
+        return res.status(404).json({ message: 'Entry not found.' });
+      }
+
+      return res.status(200).json({ deletedId: deletedExpense._id });
+    }
+
     return res.status(405).json({ message: 'Method not allowed.' });
   } catch {
     return res.status(500).json({ message: 'Expense API failed.' });

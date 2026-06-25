@@ -5,7 +5,7 @@ import Hader from './Header';
 import MemeCard from './MemeCard';
 import WeeklyDamage from './WeeklyDamage';
 
-function ExpenseForm({ token, user, onLogout }) {
+function ExpenseForm({ token, user, onLogout, onLock }) {
   var [arr, setArr] = useState([]);
   const [refunds, setRefunds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +41,8 @@ function ExpenseForm({ token, user, onLogout }) {
   const [toast, setToast] = useState(null);
   const [isReceiptOpen, setIsReceiptOpen] = useState(false);
   const shouldCaptureAfterWakeRef = useRef(false);
+  const shouldKeepWaitingForWakeRef = useRef(false);
+  const isVoiceAgentEnabledRef = useRef(false);
 
   const apiFetch = useCallback(async (url, options = {}) => {
     const response = await fetch(url, {
@@ -151,6 +153,15 @@ function ExpenseForm({ token, user, onLogout }) {
     receipt: ['Receipt of Shame', 'Your weekly spending damage, printed beautifully.'],
   };
 
+  const quickEntryChips = [
+    'Aaj 20 rupaye biscuit par',
+    '200 Zomato UPI',
+    '500 petrol cash mein',
+    '50 auto UPI',
+    '100 chai snacks',
+    '5000 salary aayi',
+  ];
+
   const paymentModes = [
     'Cash',
     'UPI',
@@ -256,6 +267,23 @@ function ExpenseForm({ token, user, onLogout }) {
     }
   };
 
+  const deleteExpense = async (expenseId) => {
+    try {
+      const response = await apiFetch(`/api/expenses?id=${encodeURIComponent(expenseId)}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not delete entry');
+      }
+
+      setArr((currentEntries) => currentEntries.filter((entry) => entry._id !== expenseId));
+      setError('');
+    } catch {
+      setError('Could not delete this entry.');
+    }
+  };
+
   const saveAiTransaction = async (e, textOverride = '') => {
     e?.preventDefault();
     const text = (textOverride || aiText).trim();
@@ -324,6 +352,9 @@ function ExpenseForm({ token, user, onLogout }) {
       setError(err.message || 'Could not record this transaction.');
     } finally {
       setIsAiSaving(false);
+      if (isVoiceAgentEnabledRef.current) {
+        window.setTimeout(() => activateVoiceAgent(true), 700);
+      }
     }
   };
 
@@ -338,9 +369,9 @@ function ExpenseForm({ token, user, onLogout }) {
     }
 
     const recognition = new SpeechRecognition();
-    recognition.lang = navigator.language?.startsWith('en') ? 'en-IN' : navigator.language || 'hi-IN';
+    recognition.lang = 'hi-IN';
     recognition.interimResults = false;
-    recognition.maxAlternatives = 1;
+    recognition.maxAlternatives = 5;
     recognition.continuous = false;
 
     recognition.onstart = () => {
@@ -350,14 +381,17 @@ function ExpenseForm({ token, user, onLogout }) {
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || '';
-      onTranscript(transcript);
+      const alternatives = Array.from(event.results?.[0] || [])
+        .map((alternative) => alternative.transcript)
+        .filter(Boolean);
+      onTranscript(alternatives[0] || '', alternatives);
     };
 
     recognition.onerror = () => {
-      setError('Voice agent could not hear clearly. Click the meme card and try again.');
-        setVoiceAgentState('idle');
+      setError('');
+      setVoiceAgentState('idle');
       shouldCaptureAfterWakeRef.current = false;
+      shouldKeepWaitingForWakeRef.current = false;
     };
 
     recognition.onend = () => {
@@ -371,37 +405,55 @@ function ExpenseForm({ token, user, onLogout }) {
   const captureTransactionByVoice = () => {
     listenOnce({
       onStart: () => setVoiceAgentState('capture'),
-      onTranscript: (transcript) => {
+      onTranscript: (transcript, alternatives = []) => {
         const text = transcript.trim();
-        setAiText(text);
+
+        if (!text || wakePhrasePattern.test(text)) {
+          shouldCaptureAfterWakeRef.current = true;
+          setVoiceAgentState('capture');
+          return;
+        }
 
         if (text) {
+          setAiText(text);
           setVoiceAgentState('saving');
-          saveAiTransaction(null, text).finally(() => {
+          const textForGemini = alternatives.length > 1
+            ? `Voice transcript alternatives: ${alternatives.join(' | ')}`
+            : text;
+          saveAiTransaction(null, textForGemini).finally(() => {
             setVoiceAgentState('idle');
           });
         }
       },
       onEnd: () => {
+        if (shouldCaptureAfterWakeRef.current) {
+          shouldCaptureAfterWakeRef.current = false;
+          window.setTimeout(captureTransactionByVoice, 250);
+          return;
+        }
+
         setVoiceAgentState((state) => (state === 'capture' ? 'idle' : state));
       },
     });
   };
 
-  const activateVoiceAgent = () => {
-    if (isListening || isAiSaving) return;
+  const activateVoiceAgent = (force = false) => {
+    if (!force && (isListening || isAiSaving)) return;
 
+    isVoiceAgentEnabledRef.current = true;
     setHasOpenedIntro(true);
     shouldCaptureAfterWakeRef.current = false;
+    shouldKeepWaitingForWakeRef.current = false;
 
     listenOnce({
       onStart: () => setVoiceAgentState('wake'),
-      onTranscript: (transcript) => {
+      onTranscript: (transcript, alternatives = []) => {
         const wakeMatch = transcript.match(wakePhrasePattern);
 
         if (!wakeMatch || typeof wakeMatch.index !== 'number') {
-          setError('I heard you, but not “hey dear”. Click the meme card and say “hey dear”.');
-          setVoiceAgentState('idle');
+          setError('');
+          shouldKeepWaitingForWakeRef.current = true;
+          setVoiceAgentState('wake');
           return;
         }
 
@@ -413,7 +465,17 @@ function ExpenseForm({ token, user, onLogout }) {
         if (transactionText) {
           setAiText(transactionText);
           setVoiceAgentState('saving');
-          saveAiTransaction(null, transactionText).finally(() => {
+          const transactionAlternatives = alternatives
+            .map((alternative) => {
+              const match = alternative.match(wakePhrasePattern);
+              if (!match || typeof match.index !== 'number') return '';
+              return alternative.slice(match.index + match[0].length).trim().replace(/^,?\s*/, '');
+            })
+            .filter(Boolean);
+          const textForGemini = transactionAlternatives.length > 1
+            ? `Voice transcript alternatives: ${transactionAlternatives.join(' | ')}`
+            : transactionText;
+          saveAiTransaction(null, textForGemini).finally(() => {
             setVoiceAgentState('idle');
           });
           return;
@@ -423,6 +485,12 @@ function ExpenseForm({ token, user, onLogout }) {
         setVoiceAgentState('capture');
       },
       onEnd: () => {
+        if (shouldKeepWaitingForWakeRef.current) {
+          shouldKeepWaitingForWakeRef.current = false;
+          window.setTimeout(() => activateVoiceAgent(true), 250);
+          return;
+        }
+
         if (shouldCaptureAfterWakeRef.current) {
           shouldCaptureAfterWakeRef.current = false;
           window.setTimeout(captureTransactionByVoice, 250);
@@ -465,7 +533,10 @@ function ExpenseForm({ token, user, onLogout }) {
           <p>Your personal financial companion</p>
           <div className="user-block">
             <span>{user?.name}</span>
-            <button type="button" onClick={onLogout}>Sign out</button>
+            <div className="user-actions">
+              <button type="button" onClick={onLock}>Lock</button>
+              <button type="button" onClick={onLogout}>Sign out</button>
+            </div>
           </div>
         </div>
       <button
@@ -512,6 +583,14 @@ function ExpenseForm({ token, user, onLogout }) {
       )}
       {activePage === 'form' && (
         <>
+        {voiceAgentState === 'idle' && !isAiSaving && (
+          <button className="agent-restart-card" type="button" onClick={activateVoiceAgent}>
+            <span className="agent-restart-dot" />
+            <span>Tap to wake voice agent</span>
+            <small>Say “hey dear” after it starts listening.</small>
+          </button>
+        )}
+
         {(voiceAgentState !== 'idle' || isAiSaving) && (
           <section className="agent-status-card" aria-live="polite">
             <div>
@@ -525,8 +604,15 @@ function ExpenseForm({ token, user, onLogout }) {
                     ? 'Say “hey dear”'
                     : 'Tell me the transaction'}
               </h3>
+              <p className="agent-state-copy">
+                {isAiSaving
+                  ? 'Recording stopped. Gemini is sorting the chaos.'
+                  : voiceAgentState === 'wake'
+                    ? 'Waiting for wake phrase.'
+                    : 'Recording your transaction now.'}
+              </p>
             </div>
-            <div className={`heartbeat-panel ${isAiSaving ? 'heartbeat-panel--saving' : ''}`} aria-hidden="true">
+            <div className={`heartbeat-panel heartbeat-panel--${isAiSaving ? 'processing' : voiceAgentState}`} aria-hidden="true">
               <span className="heartbeat-panel-dot" />
               <span className="heartbeat-panel-line" />
             </div>
@@ -537,16 +623,29 @@ function ExpenseForm({ token, user, onLogout }) {
           <div>
             <span className="eyebrow">Smart entry</span>
             <h3>Say it like you would tell a friend.</h3>
-            <p>Example: “I spent 300 on Uber” or “Got 5000 salary today”.</p>
+            <p>Example: “Aaj 20 rupaye biscuit par” or “500 petrol cash mein”.</p>
+            <div className="quick-chip-row" aria-label="Quick entry examples">
+              {quickEntryChips.map((chip) => (
+                <button
+                  key={chip}
+                  type="button"
+                  className="quick-chip"
+                  onClick={() => setAiText(chip)}
+                  disabled={isAiSaving}
+                >
+                  {chip}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="ai-entry-row">
-            <input
-              type="text"
-              value={aiText}
-              onChange={(event) => setAiText(event.target.value)}
-              placeholder="Type your transaction here, or click the meme card to speak..."
-              disabled={isAiSaving}
-            />
+              <input
+                type="text"
+                value={aiText}
+                onChange={(event) => setAiText(event.target.value)}
+              placeholder="Type your transaction here, or tap the voice agent above..."
+                disabled={isAiSaving}
+              />
             <button
               className="submit-button ai-save-button"
               type="submit"
@@ -722,7 +821,7 @@ function ExpenseForm({ token, user, onLogout }) {
             Showing {filteredEntries.length} of {arr.length} entries
           </p>
 
-          <ExpenseItem k={filteredEntries} />
+          <ExpenseItem k={filteredEntries} onDelete={deleteExpense} />
         </>
       )}
 
