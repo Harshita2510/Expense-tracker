@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import ExpenseItem from './ExpenseItem';
 import Dashboard from './Dashboard';
 import Hader from './Header';
+import MemeCard from './MemeCard';
+import WeeklyDamage from './WeeklyDamage';
 
-function ExpenseForm() {
+function ExpenseForm({ token, user, onLogout }) {
   var [arr, setArr] = useState([]);
   const [refunds, setRefunds] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -31,13 +33,33 @@ function ExpenseForm() {
   const [refundMode, setRefundMode] = useState('UPI');
   const [customRefundMode, setCustomRefundMode] = useState('');
   const [refundDescription, setRefundDescription] = useState('');
+  const [aiText, setAiText] = useState('');
+  const [isAiSaving, setIsAiSaving] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceAgentState, setVoiceAgentState] = useState('idle');
+  const [hasOpenedIntro, setHasOpenedIntro] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [isReceiptOpen, setIsReceiptOpen] = useState(false);
+  const shouldCaptureAfterWakeRef = useRef(false);
+
+  const apiFetch = useCallback(async (url, options = {}) => {
+    const response = await fetch(url, {
+      ...options,
+      headers: {
+        ...options.headers,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (response.status === 401) onLogout();
+    return response;
+  }, [token, onLogout]);
 
   useEffect(() => {
     const loadData = async () => {
       try {
         const [expensesResponse, refundsResponse] = await Promise.all([
-          fetch('/api/expenses'),
-          fetch('/api/refunds'),
+          apiFetch('/api/expenses'),
+          apiFetch('/api/refunds'),
         ]);
 
         if (!expensesResponse.ok || !refundsResponse.ok) {
@@ -56,7 +78,7 @@ function ExpenseForm() {
     };
 
     loadData();
-  }, []);
+  }, [apiFetch]);
 
   const Approv = async (e) => {
     e.preventDefault();
@@ -83,7 +105,7 @@ function ExpenseForm() {
     };
 
     try {
-      const response = await fetch('/api/expenses', {
+      const response = await apiFetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(entries),
@@ -118,6 +140,7 @@ function ExpenseForm() {
     { id: 'entries', label: 'Past Entries', icon: '☷' },
     { id: 'summary', label: 'Summary', icon: '◷' },
     { id: 'refunds', label: 'Refunds', icon: '↻' },
+    { id: 'receipt', label: 'Receipt of Shame', icon: '▧' },
   ];
 
   const pageCopy = {
@@ -125,6 +148,7 @@ function ExpenseForm() {
     entries: ['Past Entries', 'Look back at where your money has been.'],
     summary: ['Your Summary', 'A clear view of your financial story.'],
     refunds: ['Refunds', 'Keep track of money making its way back to you.'],
+    receipt: ['Receipt of Shame', 'Your weekly spending damage, printed beautifully.'],
   };
 
   const paymentModes = [
@@ -177,7 +201,7 @@ function ExpenseForm() {
     }
 
     try {
-      const response = await fetch('/api/refunds', {
+      const response = await apiFetch('/api/refunds', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -207,7 +231,7 @@ function ExpenseForm() {
 
   const markRefundDone = async (refundId) => {
     try {
-      const response = await fetch(`/api/refunds/${refundId}/done`, {
+      const response = await apiFetch(`/api/refunds/${refundId}/done`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ CompletedDate: dte.toISOString().slice(0, 10) }),
@@ -232,12 +256,217 @@ function ExpenseForm() {
     }
   };
 
+  const saveAiTransaction = async (e, textOverride = '') => {
+    e?.preventDefault();
+    const text = (textOverride || aiText).trim();
+
+    if (!text) {
+      setError('Tell me what happened first, for example: "I spent 300 on Uber".');
+      return;
+    }
+
+    setIsAiSaving(true);
+    setError('');
+
+    try {
+      const aiResponse = await apiFetch('/api/transactions/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      });
+
+      const aiData = await aiResponse.json();
+
+      if (!aiResponse.ok) {
+        throw new Error(aiData.message || 'Could not understand this transaction.');
+      }
+
+      const transactions = Array.isArray(aiData.transactions)
+        ? aiData.transactions
+        : [aiData.transaction || aiData];
+
+      const savedExpenses = await Promise.all(transactions.map(async (transaction) => {
+        const parsedDate = transaction.date
+        ? new Date(transaction.date).toISOString().slice(0, 10)
+        : dte.toISOString().slice(0, 10);
+
+        const expenseResponse = await apiFetch('/api/expenses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            Datee: parsedDate,
+            ModeOfPayment: transaction.paymentMethod === 'Cash' ? 'Cash' : 'UPI',
+            Incoming: transaction.type === 'income' ? Number(transaction.amount || 0) : 0,
+            Outgoing: transaction.type === 'expense' ? Number(transaction.amount || 0) : 0,
+            Expense: transaction.category || 'Other',
+            Description: transaction.description || text,
+          }),
+        });
+
+        if (!expenseResponse.ok) {
+          throw new Error('AI understood it, but the entry could not be saved.');
+        }
+
+        return expenseResponse.json();
+      }));
+
+      setArr((currentEntries) => [...savedExpenses, ...currentEntries]);
+      setAiText('');
+      setError('');
+      setToast({
+        message: `Logged ${savedExpenses.length} ${savedExpenses.length === 1 ? 'item' : 'items'}.`,
+        roast: aiData.roast
+          ? `AI says: '${aiData.roast}'`
+          : "AI says: 'I see we are funding the local economy one bad decision at a time.'",
+      });
+      window.setTimeout(() => setToast(null), 3000);
+    } catch (err) {
+      setError(err.message || 'Could not record this transaction.');
+    } finally {
+      setIsAiSaving(false);
+    }
+  };
+
+  const wakePhrasePattern = /\b(hey|hi|hello)\s+(dear|diary|there|deer)\b/i;
+
+  const listenOnce = ({ onTranscript, onStart, onEnd }) => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setError('Voice agent is not supported in this browser. Try Chrome, or type the sentence.');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = navigator.language?.startsWith('en') ? 'en-IN' : navigator.language || 'hi-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.continuous = false;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setError('');
+      onStart?.();
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results?.[0]?.[0]?.transcript || '';
+      onTranscript(transcript);
+    };
+
+    recognition.onerror = () => {
+      setError('Voice agent could not hear clearly. Click the meme card and try again.');
+        setVoiceAgentState('idle');
+      shouldCaptureAfterWakeRef.current = false;
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+      onEnd?.();
+    };
+
+    recognition.start();
+  };
+
+  const captureTransactionByVoice = () => {
+    listenOnce({
+      onStart: () => setVoiceAgentState('capture'),
+      onTranscript: (transcript) => {
+        const text = transcript.trim();
+        setAiText(text);
+
+        if (text) {
+          setVoiceAgentState('saving');
+          saveAiTransaction(null, text).finally(() => {
+            setVoiceAgentState('idle');
+          });
+        }
+      },
+      onEnd: () => {
+        setVoiceAgentState((state) => (state === 'capture' ? 'idle' : state));
+      },
+    });
+  };
+
+  const activateVoiceAgent = () => {
+    if (isListening || isAiSaving) return;
+
+    setHasOpenedIntro(true);
+    shouldCaptureAfterWakeRef.current = false;
+
+    listenOnce({
+      onStart: () => setVoiceAgentState('wake'),
+      onTranscript: (transcript) => {
+        const wakeMatch = transcript.match(wakePhrasePattern);
+
+        if (!wakeMatch || typeof wakeMatch.index !== 'number') {
+          setError('I heard you, but not “hey dear”. Click the meme card and say “hey dear”.');
+          setVoiceAgentState('idle');
+          return;
+        }
+
+        const transactionText = transcript
+          .slice(wakeMatch.index + wakeMatch[0].length)
+          .trim()
+          .replace(/^,?\s*/, '');
+
+        if (transactionText) {
+          setAiText(transactionText);
+          setVoiceAgentState('saving');
+          saveAiTransaction(null, transactionText).finally(() => {
+            setVoiceAgentState('idle');
+          });
+          return;
+        }
+
+        shouldCaptureAfterWakeRef.current = true;
+        setVoiceAgentState('capture');
+      },
+      onEnd: () => {
+        if (shouldCaptureAfterWakeRef.current) {
+          shouldCaptureAfterWakeRef.current = false;
+          window.setTimeout(captureTransactionByVoice, 250);
+          return;
+        }
+
+        setVoiceAgentState((state) => (state === 'wake' ? 'idle' : state));
+      },
+    });
+  };
+
+  if (!hasOpenedIntro) {
+    return (
+      <main
+        className="meme-intro-page"
+        onClick={activateVoiceAgent}
+        role="button"
+        tabIndex="0"
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') activateVoiceAgent();
+        }}
+        aria-label="Open GuiltTrip and wake voice agent"
+      >
+        <div className="meme-intro-shell">
+          <MemeCard
+            name={user?.name}
+            onActivate={activateVoiceAgent}
+          />
+          <p>Click anywhere to open GuiltTrip. Then say “hey dear”.</p>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <div className="diary-layout">
       <aside className="sidebar">
         <div className="brand-block">
-          <h1 className="app-title">Budget Diary</h1>
+          <h1 className="app-title">GuiltTrip</h1>
           <p>Your personal financial companion</p>
+          <div className="user-block">
+            <span>{user?.name}</span>
+            <button type="button" onClick={onLogout}>Sign out</button>
+          </div>
         </div>
       <button
         className="menu-toggle"
@@ -282,6 +511,52 @@ function ExpenseForm() {
         <p className="status-message status-message--error">{error}</p>
       )}
       {activePage === 'form' && (
+        <>
+        {(voiceAgentState !== 'idle' || isAiSaving) && (
+          <section className="agent-status-card" aria-live="polite">
+            <div>
+              <span className="eyebrow">
+                {isAiSaving ? 'Processing' : voiceAgentState === 'wake' ? 'Listening' : 'Recording'}
+              </span>
+              <h3>
+                {isAiSaving
+                  ? 'Logging your damage…'
+                  : voiceAgentState === 'wake'
+                    ? 'Say “hey dear”'
+                    : 'Tell me the transaction'}
+              </h3>
+            </div>
+            <div className={`heartbeat-panel ${isAiSaving ? 'heartbeat-panel--saving' : ''}`} aria-hidden="true">
+              <span className="heartbeat-panel-dot" />
+              <span className="heartbeat-panel-line" />
+            </div>
+          </section>
+        )}
+
+        <form className="ai-entry-form" onSubmit={saveAiTransaction}>
+          <div>
+            <span className="eyebrow">Smart entry</span>
+            <h3>Say it like you would tell a friend.</h3>
+            <p>Example: “I spent 300 on Uber” or “Got 5000 salary today”.</p>
+          </div>
+          <div className="ai-entry-row">
+            <input
+              type="text"
+              value={aiText}
+              onChange={(event) => setAiText(event.target.value)}
+              placeholder="Type your transaction here, or click the meme card to speak..."
+              disabled={isAiSaving}
+            />
+            <button
+              className="submit-button ai-save-button"
+              type="submit"
+              disabled={isAiSaving}
+            >
+              {isAiSaving ? 'Recording…' : 'Record'}
+            </button>
+          </div>
+        </form>
+
         <form className="expense-form" onSubmit={(e) => Approv(e)}>
           <div className="form-grid">
             <div className="entry-type-picker form-field--wide">
@@ -398,6 +673,7 @@ function ExpenseForm() {
             </div>
           </div>
         </form>
+        </>
       )}
 
       {activePage === 'entries' && (
@@ -573,7 +849,33 @@ function ExpenseForm() {
           <Dashboard ke={arr} />
         </>
       )}
+
+      {activePage === 'receipt' && (
+        <section className="receipt-preview-card">
+          <div>
+            <span className="eyebrow">Weekly damage report</span>
+            <h3>Print your shame.</h3>
+            <p>See your top 5 expenses this week with a roast attached to each one.</p>
+          </div>
+          <button
+            className={`weekly-damage-button ${new Date().getDay() === 0 ? 'weekly-damage-button--glow' : ''}`}
+            type="button"
+            onClick={() => setIsReceiptOpen(true)}
+          >
+            View Weekly Damage
+          </button>
+        </section>
+      )}
       </main>
+      {toast && (
+        <div className="ramble-toast" role="status">
+          <strong>{toast.message}</strong>
+          <p>{toast.roast}</p>
+        </div>
+      )}
+      {isReceiptOpen && (
+        <WeeklyDamage entries={arr} onClose={() => setIsReceiptOpen(false)} />
+      )}
     </div>
   );
 }

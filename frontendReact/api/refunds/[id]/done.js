@@ -1,14 +1,16 @@
 import { connectToDatabase, Expense, Refund } from '../../_db.js';
+import { authenticate } from '../../_auth.js';
 
 export default async function handler(req, res) {
   try {
+    if (!authenticate(req, res)) return;
     await connectToDatabase();
 
     if (req.method !== 'PATCH') {
       return res.status(405).json({ message: 'Method not allowed.' });
     }
 
-    const refund = await Refund.findById(req.query.id);
+    const refund = await Refund.findOne({ _id: req.query.id, user: req.userId });
 
     if (!refund) {
       return res.status(404).json({ message: 'Refund not found.' });
@@ -24,6 +26,7 @@ export default async function handler(req, res) {
 
     const completedDate = req.body.CompletedDate || new Date().toISOString().slice(0, 10);
     const expense = await Expense.create({
+      user: req.userId,
       Datee: completedDate,
       ModeOfPayment: refund.ModeOfPayment,
       Incoming: refund.Amount,

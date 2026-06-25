@@ -2,8 +2,18 @@ import mongoose from 'mongoose';
 
 let connectionPromise;
 
+const userSchema = new mongoose.Schema(
+  {
+    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    name: { type: String, required: true, trim: true },
+    password: { type: String, select: false },
+  },
+  { timestamps: true }
+);
+
 const expenseSchema = new mongoose.Schema(
   {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     Datee: {
       type: String,
       required: true,
@@ -39,6 +49,7 @@ const expenseSchema = new mongoose.Schema(
 
 const refundSchema = new mongoose.Schema(
   {
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     Datee: {
       type: String,
       required: true,
@@ -76,8 +87,46 @@ const refundSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+const transactionSchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    type: {
+      type: String,
+      enum: ['income', 'expense'],
+      required: true,
+    },
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { timestamps: true }
+);
+
+export const User = mongoose.models.User || mongoose.model('User', userSchema);
 export const Expense = mongoose.models.Expense || mongoose.model('Expense', expenseSchema);
 export const Refund = mongoose.models.Refund || mongoose.model('Refund', refundSchema);
+export const Transaction = mongoose.models.Transaction || mongoose.model('Transaction', transactionSchema);
 
 export const connectToDatabase = async () => {
   if (mongoose.connection.readyState >= 1) {
